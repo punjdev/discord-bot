@@ -6,7 +6,7 @@ __pycache__/
 # C extensions
 *.so
 
-token.txt
+data.txt
 
 # Distribution / packaging
 .Python
