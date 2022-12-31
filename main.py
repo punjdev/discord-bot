@@ -1,3 +1,4 @@
+
 import discord
 from discord import message
 from discord.ext import commands
@@ -27,6 +28,7 @@ async def on_ready():
 async def reload(ctx):
     for cmd_file in cmdsdir.glob("*.py"):
         if cmd_file.name != "__init__.py":
+            await bot.unload_extension(f"cmds.{cmd_file.name[:-3]}")
             await bot.load_extension(f"cmds.{cmd_file.name[:-3]}")
 
 bot.run(token)
