@@ -42,18 +42,23 @@ async def teams(ctx, num: int, *set):
         await ctx.send("Error: Cannot make even teams")
             
 @stats.command()
-async def mean(ctx, *set: tuple[int, ...]):
-    await ctx.send(sum(set) / len(set))
+async def mean(ctx, *set: int):
+    sum = 0
+    for val in set:
+        sum += int(val)
+    await ctx.send(str(sum / len(set)))
     
 @stats.command()
-async def median(ctx, *set: tuple[int, ...]):
+async def median(ctx, *set: int):
     lst = list(set)
-    await ctx.send(median(lst))
+    lst.sort
+    await ctx.send(lst[len(lst) // 2])
 
 @stats.command()
-async def sort(ctx, *set: tuple[int, ...]):
+async def sort(ctx, *set: int):
     lst = list(set)
     lst.sort()
     await ctx.send(lst)
+    
 async def setup(bot):
     bot.add_command(stats)
