@@ -1,5 +1,7 @@
 from discord.ext import commands
 from dateutil import parser # to deal with utc date
+from datetime import datetime, timedelta
+import time
 # import json
 # import pandas as p
 from nba_api.stats.static import players, teams
@@ -48,21 +50,36 @@ async def allScores(ctx, *name: str):
             quater = 'fourth'
         else:
             quater = "first"
-        
-        # default
-        if game['gameClock'] == "":
-            game['gameClock'] = "12:00"
             
-        # deal with utc date using parser
+         # deal with utc date using parser
         date = parser.parse(game['gameTimeUTC'])
+        date = date - timedelta(hours=5, minutes=0) # Convert from utc to est
         date = date.strftime("%I:%M %p")
-
-        # Set f strings where each var is a output line appended to the output string
-        matchup = f"{str(home['wins'])}-{str(home['losses'])} {home['teamCity']} {home['teamName']} vs {str(away['wins'])}-{str(away['losses'])} {away['teamCity']} {away['teamName']} @ {date}"
-        score = f"\t{game['gameClock']} minutes remaining in the {quater} quater, Score: {home['teamTricode']} {home['score']} - {away['teamTricode']} {away['score']}"
-        timeouts = f"\tTimeouts Remaining: {home['teamTricode']} {home['timeoutsRemaining']} - {away['teamTricode']} {away['timeoutsRemaining']}"
-        output += f"{matchup}\n{score}\n{timeouts}\n"
         
+        # game is finished
+        if game['gameClock'] == "" and game['period'] == 4:
+            matchup = f"{str(home['wins'])}-{str(home['losses'])} {home['teamCity']} {home['teamName']} vs {str(away['wins'])}-{str(away['losses'])} {away['teamCity']} {away['teamName']}"
+            score = f"{home['teamTricode']} {home['score']} - {away['teamTricode']} {away['score']}"
+            output += f"{matchup}\n\tFinal Score: {score}\n"
+        
+        # game has not started
+        elif game['gameClock'] == "":
+            matchup = f"{str(home['wins'])}-{str(home['losses'])} {home['teamCity']} {home['teamName']} vs {str(away['wins'])}-{str(away['losses'])} {away['teamCity']} {away['teamName']} @ {date}"
+            output += f"{matchup}\n"
+            
+        # game is going on
+        else:
+            # setting time left in the quater
+            clock = time.strptime(game['gameClock'], "PT%MM%S.00S")
+            clock = time.strftime("%M:%S", clock)
+            
+             # Set f strings where each var is a output line appended to the output string
+            matchup = f"{str(home['wins'])}-{str(home['losses'])} {home['teamCity']} {home['teamName']} vs {str(away['wins'])}-{str(away['losses'])} {away['teamCity']} {away['teamName']} @ {date}"
+            score = f"\t{clock} remaining in the {quater} quater\n\tScore: {home['teamTricode']} {home['score']} - {away['teamTricode']} {away['score']}"
+            timeouts = f"\tTimeouts Remaining: {home['teamTricode']} {home['timeoutsRemaining']} - {away['teamTricode']} {away['timeoutsRemaining']}"
+            output += f"{matchup}\n{score}\n{timeouts}\n"
+            
+        output += f"\n"
     await ctx.send(output) # output as 1 message
 
 
