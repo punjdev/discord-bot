@@ -53,22 +53,24 @@ async def allScores(ctx, *name: str):
             
          # deal with utc date using parser
         date = parser.parse(game['gameTimeUTC'])
-        date = date - timedelta(hours=5, minutes=0) # Convert from utc to est
-        date = date.strftime("%I:%M %p")
-        
+        date = date - timedelta(hours=5, minutes=0) # Convert from utc to est        
         # game is finished
-        if game['gameClock'] == "" and game['period'] == 4:
+        if game['gameClock'] == "" and game['period'] >= 4:
             matchup = f"{str(home['wins'])}-{str(home['losses'])} {home['teamCity']} {home['teamName']} vs {str(away['wins'])}-{str(away['losses'])} {away['teamCity']} {away['teamName']}"
             score = f"{home['teamTricode']} {home['score']} - {away['teamTricode']} {away['score']}"
             output += f"{matchup}\n\tFinal Score: {score}\n"
         
         # game has not started
         elif game['gameClock'] == "":
-            matchup = f"{str(home['wins'])}-{str(home['losses'])} {home['teamCity']} {home['teamName']} vs {str(away['wins'])}-{str(away['losses'])} {away['teamCity']} {away['teamName']} @ {date}"
+            date = date.strftime("%A @ %I:%M %p")
+            matchup = f"{str(home['wins'])}-{str(home['losses'])} {home['teamCity']} {home['teamName']} vs {str(away['wins'])}-{str(away['losses'])} {away['teamCity']} {away['teamName']} - {date}"
             output += f"{matchup}\n"
             
         # game is going on
         else:
+            date = date.strftime("%I:%M %p")
+
+            game_leaders = game['gameLeaders']
             # setting time left in the quater
             clock = time.strptime(game['gameClock'], "PT%MM%S.00S")
             clock = time.strftime("%M:%S", clock)
@@ -77,9 +79,12 @@ async def allScores(ctx, *name: str):
             matchup = f"{str(home['wins'])}-{str(home['losses'])} {home['teamCity']} {home['teamName']} vs {str(away['wins'])}-{str(away['losses'])} {away['teamCity']} {away['teamName']} @ {date}"
             score = f"\t{clock} remaining in the {quater} quater\n\tScore: {home['teamTricode']} {home['score']} - {away['teamTricode']} {away['score']}"
             timeouts = f"\tTimeouts Remaining: {home['teamTricode']} {home['timeoutsRemaining']} - {away['teamTricode']} {away['timeoutsRemaining']}"
-            output += f"{matchup}\n{score}\n{timeouts}\n"
+            home_leaders = f"\t\t{game_leaders['homeLeaders']['teamTricode']}: {game_leaders['homeLeaders']['name']} {game_leaders['homeLeaders']['points']}pts/{game_leaders['homeLeaders']['rebounds']}rbs/{game_leaders['homeLeaders']['assists']}ast"
+            away_leaders = f"\t\t{game_leaders['awayLeaders']['teamTricode']}: {game_leaders['awayLeaders']['name']} {game_leaders['awayLeaders']['points']}pts/{game_leaders['awayLeaders']['rebounds']}rbs/{game_leaders['awayLeaders']['assists']}ast"
+            output += f"{matchup}\n{score}\n{timeouts}\n\tGame Leaders:\n{home_leaders}\n{away_leaders}\n"
             
         output += f"\n"
+        
     await ctx.send(output) # output as 1 message
 
 
