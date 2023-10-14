@@ -2,13 +2,9 @@ from discord.ext import commands
 from dateutil import parser # to deal with utc date
 from datetime import datetime, timedelta
 import time
-# import json
-# import pandas as p
 from nba_api.stats.static import players, teams
-from nba_api.stats.endpoints import commonplayerinfo
+from nba_api.stats.endpoints import leaguestandingsv3
 from nba_api.live.nba.endpoints import scoreboard, boxscore, playbyplay
-
-# from nba_api.stats.static import teams
 
 playerID = {} # player full name: player id
 teamID = {} # team: team id
@@ -27,60 +23,69 @@ async def nba(ctx):
 
 # all scores
 @nba.command(
-    aliases=['sc', 'scores'],
+    aliases=['sc', 'scoreboard'],
+    help="$[nba|n|basketball] [scores|sc|scoreboard]",
+    description="Outputs all the scores for todays games.",
+    breif="Todays Nba Scoreboard.",
     enabled=True,
     hidden=False
     )
-async def allScores(ctx, *name: str):
-    ''' Output all scoreboards'''
+async def scores(ctx, *name: str):
+    '''Todays Nba Scoreboard.'''
     games = scoreboard.ScoreBoard().games.get_dict() # list of dicts of all the games for today
     output = ""
     for game in games: 
         home = game['homeTeam']
         away = game['awayTeam']
-        
-        # set quater
-        if game['period'] == 1 : 
-            quater = 'first'
-        elif game['period'] == 2: 
-            quater = 'second'
-        elif game['period'] == 3: 
-            quater = 'third'
-        elif game['period'] == 4: 
-            quater = 'fourth'
-        else:
-            quater = "first"
+        game_leaders = game['gameLeaders']
             
          # deal with utc date using parser
         date = parser.parse(game['gameTimeUTC'])
-        date = date - timedelta(hours=5, minutes=0) # Convert from utc to est        
+        date = date - timedelta(hours=5, minutes=0) # Convert from utc to est
+                
         # game is finished
         if game['gameClock'] == "" and game['period'] >= 4:
             matchup = f"{str(home['wins'])}-{str(home['losses'])} {home['teamCity']} {home['teamName']} vs {str(away['wins'])}-{str(away['losses'])} {away['teamCity']} {away['teamName']}"
             score = f"{home['teamTricode']} {home['score']} - {away['teamTricode']} {away['score']}"
-            output += f"{matchup}\n\tFinal Score: {score}\n"
+            # player game leaders from home & away
+            home_leaders = f"\t\t{game_leaders['homeLeaders']['teamTricode']}: {game_leaders['homeLeaders']['name']} {game_leaders['homeLeaders']['points']}pts/{game_leaders['homeLeaders']['rebounds']}rbs/{game_leaders['homeLeaders']['assists']}ast"
+            away_leaders = f"\t\t{game_leaders['awayLeaders']['teamTricode']}: {game_leaders['awayLeaders']['name']} {game_leaders['awayLeaders']['points']}pts/{game_leaders['awayLeaders']['rebounds']}rbs/{game_leaders['awayLeaders']['assists']}ast"                 
+            
+            output += f"{matchup}\n\tFinal Score: {score}\n\tGame Leaders:\n{home_leaders}\n{away_leaders}\n"
         
         # game has not started
         elif game['gameClock'] == "":
             date = date.strftime("%A @ %I:%M %p")
+            
             matchup = f"{str(home['wins'])}-{str(home['losses'])} {home['teamCity']} {home['teamName']} vs {str(away['wins'])}-{str(away['losses'])} {away['teamCity']} {away['teamName']} - {date}"
             output += f"{matchup}\n"
             
         # game is going on
         else:
             date = date.strftime("%I:%M %p")
-
-            game_leaders = game['gameLeaders']
+                        
             # setting time left in the quater
             clock = time.strptime(game['gameClock'], "PT%MM%S.00S")
             clock = time.strftime("%M:%S", clock)
+            
+            # set quater
+            if game['period'] == 1 : 
+                quater = 'first'
+            elif game['period'] == 2: 
+                quater = 'second'
+            elif game['period'] == 3: 
+                quater = 'third'
+            elif game['period'] == 4: 
+                quater = 'fourth'
             
              # Set f strings where each var is a output line appended to the output string
             matchup = f"{str(home['wins'])}-{str(home['losses'])} {home['teamCity']} {home['teamName']} vs {str(away['wins'])}-{str(away['losses'])} {away['teamCity']} {away['teamName']} @ {date}"
             score = f"\t{clock} remaining in the {quater} quater\n\tScore: {home['teamTricode']} {home['score']} - {away['teamTricode']} {away['score']}"
             timeouts = f"\tTimeouts Remaining: {home['teamTricode']} {home['timeoutsRemaining']} - {away['teamTricode']} {away['timeoutsRemaining']}"
+            # player game leaders from home & away
             home_leaders = f"\t\t{game_leaders['homeLeaders']['teamTricode']}: {game_leaders['homeLeaders']['name']} {game_leaders['homeLeaders']['points']}pts/{game_leaders['homeLeaders']['rebounds']}rbs/{game_leaders['homeLeaders']['assists']}ast"
             away_leaders = f"\t\t{game_leaders['awayLeaders']['teamTricode']}: {game_leaders['awayLeaders']['name']} {game_leaders['awayLeaders']['points']}pts/{game_leaders['awayLeaders']['rebounds']}rbs/{game_leaders['awayLeaders']['assists']}ast"
+            
             output += f"{matchup}\n{score}\n{timeouts}\n\tGame Leaders:\n{home_leaders}\n{away_leaders}\n"
             
         output += f"\n"
@@ -90,6 +95,18 @@ async def allScores(ctx, *name: str):
 
 # Stat commands
 ##########################################################################
+
+@nba.command(
+    aliases=['stand'],
+    enabled=True,
+    hidden=True)
+async def standings(ctx):
+    table = leaguestandingsv3.LeagueStandingsV3().get_dict()
+    for t in table:
+        print(t, table[t])
+    await ctx.send("test")
+
+
 # Return player id
 @nba.command(
     aliases=['pid'],
@@ -101,9 +118,7 @@ async def getPlayerID(ctx, *name: str):
     player = player.lower()
     id = playerID[player]
     await ctx.send(f"{player}: {playerID[player]}")
-    # player_info = commonplayerinfo.CommonPlayerInfo(player_id=id) 
-    # player_info.
-    # await ctx.send(f"{player_info.get_response()}")
+
 
 # Return team id
 @nba.command(
